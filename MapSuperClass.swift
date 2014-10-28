@@ -10,16 +10,17 @@
 import UIKit
 import MapKit
 
-let SCREEN_HEIGHT_WITHOUT_STATUS_BAR    = UIScreen.mainScreen().bounds.size.height - 20
-let HEIGHT_STATUS_BAR: Float            = 20.0
-let Y_DOWN_TABLEVIEW                    = SCREEN_HEIGHT_WITHOUT_STATUS_BAR - 40
-let DEFAULT_HEIGHT_HEADER: Float        = 180.0 // height of the map
-let MIN_HEIGHT_HEADER: Float            = 10.0
-let DEFAULT_Y_OFFSET: Float             = (UIScreen.mainScreen().bounds.size.height == 480.0) ? -200.0 : -250.0
-let FULL_Y_OFFSET: Float                = -200.0
-let MIN_Y_OFFSET_TO_REACH               = -30
-let OPEN_SHUTTER_LATITUDE_MINUS: Float  = 0.005
-let CLOSE_SHUTTER_LATITUDE_MINUS: Float = 0.018
+let SCREEN_HEIGHT_WITHOUT_STATUS_BAR      = UIScreen.mainScreen().bounds.size.height - 20
+let SCREEN_WIDTH                          = UIScreen.mainScreen().bounds.size.width
+let HEIGHT_STATUS_BAR: Float              = 20.0
+let Y_DOWN_TABLEVIEW                      = SCREEN_HEIGHT_WITHOUT_STATUS_BAR - 40
+let DEFAULT_HEIGHT_HEADER: CGFloat        = (UIScreen.mainScreen().bounds.size.height)/3 // height of the map
+let MIN_HEIGHT_HEADER: CGFloat            = 10.0
+let DEFAULT_Y_OFFSET: CGFloat             = (UIScreen.mainScreen().bounds.size.height == 480.0) ? -200.0 : -250.0
+let FULL_Y_OFFSET: CGFloat                = -200.0
+let MIN_Y_OFFSET_TO_REACH                 = -30
+let OPEN_SHUTTER_LATITUDE_MINUS: CGFloat  = 0.005
+let CLOSE_SHUTTER_LATITUDE_MINUS: CGFloat = 0.018
 
 protocol MapSuperClassDelegate {
     // Tap handlers
@@ -32,15 +33,15 @@ protocol MapSuperClassDelegate {
 }
 
 
-class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSource, MKMapViewDelegate, UIGestureRecognizerDelegate
-{
+class MapSuperClass: UIViewController, UITableViewDelegate, MKMapViewDelegate, UIGestureRecognizerDelegate, UITableViewDataSource {
     var delegate    : MapSuperClassDelegate?
     var tableView   : UITableView?
-    
-    @IBOutlet var mapView     : MKMapView!
+    var mapView     : MKMapView?
+    //var dataSource  : UITableViewDataSource!
     
     let heighTableViewHeader       = DEFAULT_HEIGHT_HEADER
     let heighTableView             = SCREEN_HEIGHT_WITHOUT_STATUS_BAR
+    let widthTableView             = SCREEN_WIDTH
     let minHeighTableViewHeader    = MIN_HEIGHT_HEADER
     let default_Y_tableView        = HEIGHT_STATUS_BAR
     let Y_tableViewOnBottom        = Y_DOWN_TABLEVIEW
@@ -73,31 +74,33 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
     
     // Set all view we will need
     func setupTableView() {
-        self.tableView = UITableView(frame: CGRectMake(0, 20, 320, self.heighTableView))
-        self.tableView!.tableHeaderView = UIView(frame: CGRectMake(0, 0, self.view.frame.size.width, self.heighTableViewHeader))
+        self.tableView = UITableView(frame: CGRectMake(0, 20, self.widthTableView, self.heighTableView))
+        self.tableView!.tableHeaderView = UIView(frame: CGRectMake(0, 0, self.view.frame.size.width, CGFloat(self.heighTableViewHeader)))
         self.tableView!.backgroundColor = UIColor.clearColor()
         
         // Add gesture to gestures
         self.tapMapViewGesture = UITapGestureRecognizer(target: self, action: "handleTapMapView:")
         self.tapTableViewGesture = UITapGestureRecognizer(target: self, action: "handleTapTableView:")
         self.tapTableViewGesture!.delegate = self
-        self.tableView!.tableHeaderView.addGestureRecognizer(self.tapMapViewGesture)
-        self.tableView!.addGestureRecognizer(self.tapTableViewGesture)
+        self.tableView!.tableHeaderView?.addGestureRecognizer(self.tapMapViewGesture!)
+        self.tableView!.addGestureRecognizer(self.tapTableViewGesture!)
         
         // Init selt as default tableview's delegate & datasource
-        self.tableView!.dataSource = self
         self.tableView!.delegate = self
-        self.view!.addSubview(self.tableView)
+        self.tableView!.dataSource = self
+        self.view.addSubview(self.tableView!)
     }
     
     func setupMapView() {
         
         
-        self.mapView = MKMapView(frame: CGRectMake(0, self.default_Y_mapView, 320, self.heighTableView))
+        self.mapView = MKMapView(frame: CGRectMake(0, self.default_Y_mapView, self.widthTableView, self.heighTableView))
         self.mapView!.showsUserLocation = true
         self.mapView!.delegate = self
         
-        self.view.insertSubview(self.mapView, belowSubview: self.tableView)
+        self.mapView!.showsPointsOfInterest = false // Hide other venues from map
+        
+        self.view.insertSubview(self.mapView!, belowSubview: self.tableView!)
         
     }
     
@@ -133,7 +136,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
             options: .CurveEaseOut,
             animations: { () -> Void in
                 self.tableView!.tableHeaderView = UIView(frame: CGRectMake(0, 0, self.view.frame.size.width, self.minHeighTableViewHeader))
-                self.mapView!.frame = CGRectMake(0, FULL_Y_OFFSET, self.mapView!.frame.size.width, self.heightMap)
+                self.mapView!.frame = CGRectMake(0, FULL_Y_OFFSET, CGFloat(self.mapView!.frame.size.width), CGFloat(self.heightMap))
                 self.tableView!.frame = CGRectMake(0, self.Y_tableViewOnBottom, self.tableView!.frame.size.width, self.tableView!.frame.size.height)
             },
             completion: {
@@ -144,7 +147,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
                 self.tableView!.scrollEnabled = false
                 
                 // Center the user 's location
-                self.extraZoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: self.latitudeUserDown, animated: self.regionAnimated)
+                self.extraZoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: Float(self.latitudeUserDown), animated: self.regionAnimated)
                 
                 // Inform the delegate
                 self.delegate?.didTableViewMoveDown()
@@ -160,7 +163,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
             animations: { () -> Void in
                 self.tableView!.tableHeaderView = UIView(frame: CGRectMake(0, self.headerYOffSet, self.view.frame.size.width, self.heighTableViewHeader))
                 self.mapView!.frame = CGRectMake(0, self.default_Y_mapView, self.mapView!.frame.size.width, self.heighTableView)
-                self.tableView!.frame = CGRectMake(0, self.default_Y_tableView, self.tableView!.frame.size.width, self.tableView!.frame.size.height)
+                self.tableView!.frame = CGRectMake(0, CGFloat(self.default_Y_tableView), self.tableView!.frame.size.width, self.tableView!.frame.size.height)
             },
             completion: {
                 (finished: Bool) -> Void in
@@ -168,10 +171,10 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
                 self.tableView!.allowsSelection = true
                 self.isShutterOpen = false
                 self.tableView!.scrollEnabled = true
-                self.tableView!.tableHeaderView.addGestureRecognizer(self.tapMapViewGesture)
+                self.tableView!.tableHeaderView?.addGestureRecognizer(self.tapMapViewGesture!)
                 
                 // Center the user 's location
-                self.zoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: self.latitudeUserUp, animated: self.regionAnimated)
+                self.zoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: Float(self.latitudeUserUp), animated: self.regionAnimated)
                 
                 // Inform the delegate
                 self.delegate?.didTableViewMoveUp()
@@ -195,7 +198,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
         self.mapView!.frame = headerMapViewFrame
         
         // check if the Y offset is under the minus Y to reach
-        if self.tableView!.contentOffset.y < Float(self.minYOffsetToReach) {
+        if self.tableView!.contentOffset.y < CGFloat(self.minYOffsetToReach) {
             if !self.displayMap {
                 self.displayMap = true
             }
@@ -253,7 +256,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
             //
         } else {
             
-            self.zoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: self.latitudeUserUp, animated: self.userLocationUpdateAnimated)
+            self.zoomToUserLocation(userLocationInfo: self.mapView!.userLocation, minmumLatitude: Float(self.latitudeUserUp), animated: self.userLocationUpdateAnimated)
         }
     }
     
@@ -270,7 +273,7 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
     
     
     // UITableViewDataSource Methods
-    func tableView(tableView: UITableView!, numberOfRowsInSection section: Int) -> Int {
+    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return 10
     }
     
@@ -284,14 +287,15 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
     
     
     
-    func tableView(tableView: UITableView!, cellForRowAtIndexPath indexPath: NSIndexPath!) -> UITableViewCell! {
-        var cell : UITableViewCell?
-        var identifier : NSString?
+    func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell {
+        
+        var identifier : NSString
         if indexPath.row == 0 {
             identifier = "firstCell"
             // Add some shadow to the first cell
-            cell = tableView.dequeueReusableCellWithIdentifier(identifier) as UITableViewCell!
-            if !cell {
+            var cell = tableView.dequeueReusableCellWithIdentifier(identifier) as? UITableViewCell
+            
+            if !(cell != nil) {
                 cell = UITableViewCell(style: .Default, reuseIdentifier: identifier)
                 
                 cell!.layer.shadowPath = UIBezierPath(rect: cell!.layer.bounds).CGPath
@@ -299,16 +303,24 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
                 cell!.layer.shadowColor = UIColor.grayColor().CGColor
                 cell!.layer.shadowOpacity = 0.75
             }
+            cell?.textLabel.text = "Hello World !"
+            
+            return cell!
+            
         } else {
-            identifier = "otherCell"
-            cell = tableView.dequeueReusableCellWithIdentifier(identifier) as UITableViewCell!
-            if !cell {
+            var identifier = "otherCell"
+            var cell = tableView.dequeueReusableCellWithIdentifier(identifier) as? UITableViewCell
+            if !(cell != nil) {
                 cell = UITableViewCell(style: .Default, reuseIdentifier: identifier)
             }
+            cell?.textLabel.text = "Hello World !"
+            
+            return cell!
+            
+            
         }
         
-        cell!.textLabel.text = "Hello World !"
-        return cell
+        
     }
     
     
@@ -320,15 +332,16 @@ class MapSuperClass: UIViewController, UITableViewDelegate, UITableViewDataSourc
         //this is the last row in section.
         if indexPath.row == totalRow - 1 {
             // get total of cells's Height
-            var cellsHeight = Float(totalRow) * cell.frame.size.height
+            var cellsHeight = Float(totalRow) * Float(cell.frame.size.height)
             // calculate tableView's Height with it's the header
-            var tableHeight = tableView.frame.size.height - tableView.tableHeaderView.frame.size.height
+            var s = tableView.tableHeaderView?.frame.size.height
+            var tableHeight = Float(tableView.frame.size.height) - Float(s!)//Float(tableView.tableHeaderView?.frame.size.height)
             
             // Check if we need to create a foot to hide the backView (the map)
-            if (cellsHeight - tableView.frame.origin.y) < tableHeight {
+            if (cellsHeight - Float(tableView.frame.origin.y)) < tableHeight {
                 // Add a footer to hide the background
-                tableView.tableFooterView = UIView(frame: CGRectMake(0, 0, 320, tableHeight - cellsHeight))
-                tableView.tableFooterView.backgroundColor = UIColor.whiteColor()
+                tableView.tableFooterView = UIView(frame: CGRectMake(0, 0, 320, CGFloat(tableHeight - cellsHeight)))
+                tableView.tableFooterView?.backgroundColor = UIColor.whiteColor()
             }
         }
         
